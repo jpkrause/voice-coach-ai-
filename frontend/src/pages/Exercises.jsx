@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import AudioRecorder from '../components/AudioRecorder';
+import ExerciseModal from '../components/ExerciseModal';
 
 const Exercises = () => {
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeExercise, setActiveExercise] = useState(null);
   
   // Breath Analysis State
   const [breathResult, setBreathResult] = useState(null);
@@ -71,27 +73,7 @@ const Exercises = () => {
   }, []);
 
   const handleStartExercise = (exercise) => {
-    // Placeholder for Phase 2: Open Recording Modal
-    alert(`Starting exercise: ${exercise.name}\n\nTarget: ${exercise.physiological_target}\n\nExecution: ${exercise.metaphors?.execution || "No instructions"}`);
-    
-    // Simulating completion for Phase 1 demo
-    const score = Math.floor(Math.random() * 30) + 70; // Random score 70-100
-    if (confirm(`Simulating session... You scored ${score}! Submit to backend?`)) {
-        fetch('http://localhost:8000/sessions/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: 1,
-                exercise_id: exercise.id,
-                score: score
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.feedback + `\nXP earned: ${data.xp_earned}`);
-            window.location.reload(); // To update streaks/xp if we go back to dashboard
-        });
-    }
+    setActiveExercise(exercise);
   };
 
   if (loading) return <div>Loading Library...</div>;
@@ -262,6 +244,13 @@ const Exercises = () => {
           </div>
         </div>
       ))}
+      
+      {activeExercise && (
+        <ExerciseModal 
+          exercise={activeExercise} 
+          onClose={() => setActiveExercise(null)} 
+        />
+      )}
     </div>
   );
 };

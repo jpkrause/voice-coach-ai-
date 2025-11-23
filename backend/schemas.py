@@ -46,4 +46,5 @@ class SessionResponse(BaseModel):
     new_total_xp: int
     new_level: int
     streak: int
+    score: int
     feedback: Optional[str] = None

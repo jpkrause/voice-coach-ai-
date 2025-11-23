@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import shutil
 import os
+from datetime import datetime
 
 from . import models, database, schemas, gamification
 from .analysis.breath import analyze_breath_stability
@@ -230,21 +231,76 @@ def read_exercises(skip: int = 0, limit: int = 100, db: Session = Depends(databa
 # --- Sessions & Gamification ---
 
 @app.post("/sessions/", response_model=schemas.SessionResponse)
-def create_session(session: schemas.SessionCreate, db: Session = Depends(database.get_db)):
+def create_session(
+    user_id: int = Form(...),
+    exercise_id: int = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(database.get_db)
+):
     # 1. Get User and Exercise
-    user = db.query(models.User).filter(models.User.id == session.user_id).first()
-    exercise = db.query(models.Exercise).filter(models.Exercise.id == session.exercise_id).first()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
     
     if not user or not exercise:
         raise HTTPException(status_code=404, detail="User or Exercise not found")
+
+    # 2. Save Uploaded File
+    upload_dir = "backend/user_uploads"
+    os.makedirs(upload_dir, exist_ok=True)
     
-    # 2. Gamification Logic
-    # Update Streak
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}_{file.filename}"
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # 3. Run Analysis
+    health_result = analyze_health(file_path)
+    pitch_result = analyze_pitch(file_path)
+    
+    # 4. Scoring Logic
+    score = 70  # Start Score
+    
+    # Health Scoring
+    if health_result.get("success"):
+        overall_health = health_result["assessment"]["overall"]
+        if overall_health == "green":
+            score += 20
+        elif overall_health == "red":
+            score -= 20
+            
+    # Pitch Scoring
+    if pitch_result.get("success"):
+        metrics = pitch_result["metrics"]
+        if metrics.get("pitch_stability_std", 10.0) < 2.0:
+            score += 10
+            
+    # Clamp Score
+    score = max(0, min(100, score))
+
+    # 5. AI Feedback
+    metrics_for_ai = {}
+    if health_result.get("success"):
+        metrics_for_ai.update(health_result["metrics"])
+    if pitch_result.get("success"):
+        metrics_for_ai.update(pitch_result["metrics"])
+    
+    metrics_for_ai["score"] = score
+    
+    user_context = {
+        "level": user.level,
+        "voice_type": user.voice_type or "Unknown",
+        "streak": user.current_streak
+    }
+    
+    ai_feedback = generate_feedback(exercise.name, metrics_for_ai, user_context)
+
+    # 6. Gamification Logic
     gamification.update_streak(user, db)
     
-    # Calculate XP
     xp_earned = gamification.calculate_xp(
-        session_score=session.score,
+        session_score=score,
         difficulty=exercise.difficulty,
         current_streak=user.current_streak
     )
@@ -253,12 +309,18 @@ def create_session(session: schemas.SessionCreate, db: Session = Depends(databas
     user.xp += xp_earned
     user.level = gamification.calculate_level(user.xp)
     
-    # 3. Save Session
+    # 7. Save Session
     db_session = models.Session(
-        user_id=session.user_id,
-        exercise_id=session.exercise_id,
-        score=session.score,
-        # audio_url would go here
+        user_id=user_id,
+        exercise_id=exercise_id,
+        score=score,
+        audio_url=file_path,
+        metrics_json={
+            "health": health_result.get("metrics"),
+            "pitch": pitch_result.get("metrics"),
+            "assessment": health_result.get("assessment")
+        },
+        ai_feedback={"text": ai_feedback}
     )
     db.add(db_session)
     db.commit()
@@ -269,5 +331,6 @@ def create_session(session: schemas.SessionCreate, db: Session = Depends(databas
         "new_total_xp": user.xp,
         "new_level": user.level,
         "streak": user.current_streak,
-        "feedback": f"Great job! You earned {xp_earned} XP."
+        "score": score,
+        "feedback": ai_feedback
     }
