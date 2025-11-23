@@ -1,0 +1,29 @@
+# General
+.DS_Store
+*.log
+
+# Python / Backend
+__pycache__/
+*.py[cod]
+*$py.class
+backend/.env
+backend/venv/
+backend/.venv/
+*.db
+vocal_coach.db
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# User uploads (if not intended for repo)
+backend/user_uploads/*
+!backend/user_uploads/.gitkeep
