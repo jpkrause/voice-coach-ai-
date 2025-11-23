@@ -31,6 +31,9 @@ class Exercise(Base):
     physiological_target = Column(String, nullable=True) # e.g. "SOVT / PTP Reduction"
     metaphors = Column(JSON, default=dict) # {"nasal": "Denk an ein inneres Gähnen"}
     instructions_audio_url = Column(String, nullable=True)
+    
+    # New fields for Multi-Layer / Scales
+    pattern = Column(JSON, nullable=True) # e.g. {"intervals": [0, 2, 4], "duration": 0.5, "sequence": ["C4", "D4"]}
 
     sessions = relationship("Session", back_populates="exercise")
     user_stats = relationship("UserExerciseStats", back_populates="exercise")

@@ -9,3 +9,4 @@ praat-parselmouth
 google-generativeai
 python-dotenv
 gTTS
+scipy

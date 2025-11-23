@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import RangeFinder from '../components/RangeFinder';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRangeFinder, setShowRangeFinder] = useState(false);
 
   useEffect(() => {
     const userId = localStorage.getItem('user_id') || 1; // Fallback to 1 for dev
@@ -90,13 +92,26 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+      <div style={{ marginTop: '3rem', textAlign: 'center', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
         <Link to="/exercises">
           <button className="btn-primary" style={{ fontSize: '1.2rem', padding: '1rem 3rem' }}>
             Start Training
           </button>
         </Link>
+        <button 
+            className="btn-secondary" 
+            style={{ fontSize: '1.2rem', padding: '1rem 3rem' }}
+            onClick={() => setShowRangeFinder(!showRangeFinder)}
+        >
+            {showRangeFinder ? "Close Range Finder" : "Check Vocal Range"}
+        </button>
       </div>
+
+      {showRangeFinder && (
+          <div style={{ marginTop: '2rem' }}>
+              <RangeFinder />
+          </div>
+      )}
     </div>
   );
 };

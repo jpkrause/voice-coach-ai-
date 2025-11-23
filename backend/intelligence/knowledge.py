@@ -112,7 +112,13 @@ KNOWLEDGE_BASE = {
                 "category": "SOVT/Warmup",
                 "target": "Ausgleich subglottischer Druck, Lockerung",
                 "execution": "Lippen flattern lassen auf 'Brrr'.",
-                "expected_metrics": "HNR stabil, keine F0-Brüche."
+                "expected_metrics": "HNR stabil, keine F0-Brüche.",
+                "pattern": {
+                    "type": "scale",
+                    "intervals": [0, 2, 4, 5, 4, 2, 0], # 1-2-3-4-3-2-1
+                    "duration": 0.5,
+                    "root": "C3" 
+                }
             },
             {
                 "id": 2,
@@ -184,7 +190,27 @@ KNOWLEDGE_BASE = {
                 "category": "Flexibilität",
                 "target": "Schnelle CT/TA Anpassung",
                 "execution": "Sprünge 1-8-1 auf [i].",
-                "expected_metrics": "Pitch-Accuracy < 20 Cents."
+                "expected_metrics": "Pitch-Accuracy < 20 Cents.",
+                 "pattern": {
+                    "type": "scale",
+                    "intervals": [0, 12, 0], 
+                    "duration": 1.0,
+                    "root": "C4" 
+                }
+            },
+            {
+                "id": 13,
+                "name": "Major Scale (C4)",
+                "category": "Pitch/Ear Training",
+                "target": "Intonation und Gehörbildung",
+                "execution": "Singe die C-Dur Tonleiter auf 'La'.",
+                "expected_metrics": "Pitch-Accuracy < 15 Cents.",
+                "pattern": {
+                    "type": "scale",
+                    "intervals": [0, 2, 4, 5, 7, 9, 11, 12], # Major Scale
+                    "duration": 0.8,
+                    "root": "C4" 
+                }
             }
         ],
         "advanced": [

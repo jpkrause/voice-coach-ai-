@@ -10,8 +10,11 @@ from datetime import datetime
 from . import models, database, schemas, gamification
 from .analysis.breath import analyze_breath_stability
 from .analysis.quality import analyze_health
-from .analysis.pitch import analyze_pitch
+from .analysis.pitch import analyze_pitch, analyze_pitch_accuracy
 from .intelligence.ai_wrapper import generate_feedback, generate_performance_review
+from .intelligence.knowledge import KNOWLEDGE_BASE
+from .audio.synth import generate_scale_audio
+import math
 
 models.Base.metadata.create_all(bind=database.engine)
 
@@ -193,7 +196,7 @@ async def analyze_performance_endpoint(
 async def analyze_range_endpoint(file: UploadFile = File(...)):
     """
     Endpoint for the Range Finder.
-    Determines lowest and highest note sung.
+    Determines lowest and highest note sung and classifies voice type.
     """
     temp_filename = f"temp_range_{file.filename}"
     with open(temp_filename, "wb") as buffer:
@@ -201,6 +204,40 @@ async def analyze_range_endpoint(file: UploadFile = File(...)):
         
     try:
         result = analyze_pitch(temp_filename)
+        
+        if result.get("success"):
+            metrics = result.get("metrics", {})
+            min_hz = metrics.get("min_pitch_hz")
+            max_hz = metrics.get("max_pitch_hz")
+            
+            if min_hz and max_hz:
+                best_match = "Unknown"
+                min_diff = float("inf")
+                
+                # Calculate user's logarithmic center frequency
+                user_log_center = (math.log(min_hz) + math.log(max_hz)) / 2
+                
+                fache = KNOWLEDGE_BASE["voice_classification"]["fache"]
+                
+                for fach_name, data in fache.items():
+                    f_min, f_max = data["range_hz"]
+                    
+                    # Calculate fach's logarithmic center frequency
+                    fach_log_center = (math.log(f_min) + math.log(f_max)) / 2
+                    
+                    # Calculate distance
+                    diff = abs(user_log_center - fach_log_center)
+                    
+                    if diff < min_diff:
+                        min_diff = diff
+                        best_match = fach_name
+                
+                result["detected_voice_type"] = best_match
+                
+                # Add context from KB
+                if best_match in fache:
+                     result["voice_type_info"] = fache[best_match]
+
         return result
     finally:
         if os.path.exists(temp_filename):
@@ -221,12 +258,42 @@ def read_exercises(skip: int = 0, limit: int = 100, db: Session = Depends(databa
     
     # Inject Audio URL if missing
     for ex in exercises:
-        if not ex.instructions_audio_url:
+        # If exercise has a pattern, the audio is generated on-demand or pre-generated via a specific endpoint
+        if ex.pattern:
+             ex.instructions_audio_url = f"http://localhost:8000/exercises/{ex.id}/audio"
+        elif not ex.instructions_audio_url:
             filename = f"{ex.id}_{ex.name.replace(' ', '_').lower()}.mp3"
             # Using absolute URL for localhost dev
             ex.instructions_audio_url = f"http://localhost:8000/static/exercises/{filename}"
             
     return exercises
+
+@app.get("/exercises/{exercise_id}/audio")
+def get_exercise_audio(exercise_id: int, db: Session = Depends(database.get_db)):
+    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+        
+    if not exercise.pattern:
+        # Fallback to static file if no pattern
+        filename = f"{exercise.id}_{exercise.name.replace(' ', '_').lower()}.mp3"
+        return {"url": f"http://localhost:8000/static/exercises/{filename}"}
+
+    # Generate Audio if pattern exists
+    output_filename = f"generated_{exercise.id}_{exercise.name.replace(' ', '_').lower()}.wav"
+    output_path = os.path.join("backend/static/exercises", output_filename)
+    
+    # Check if exists (cache)
+    if not os.path.exists(output_path):
+        pattern_data = exercise.pattern
+        generate_scale_audio(
+            root_note=pattern_data.get("root", "C4"),
+            pattern=pattern_data.get("intervals", []),
+            duration_per_note=pattern_data.get("duration", 0.8),
+            output_path=output_path
+        )
+        
+    return File(output_path, media_type="audio/wav")
 
 # --- Sessions & Gamification ---
 
@@ -257,24 +324,38 @@ def create_session(
 
     # 3. Run Analysis
     health_result = analyze_health(file_path)
-    pitch_result = analyze_pitch(file_path)
     
-    # 4. Scoring Logic
-    score = 70  # Start Score
+    # Pitch Analysis (Standard or Pattern-based)
+    pitch_result = {}
+    accuracy_result = {}
     
-    # Health Scoring
+    if exercise.pattern:
+        # Pattern-based matching
+        accuracy_result = analyze_pitch_accuracy(file_path, exercise.pattern)
+        if accuracy_result.get("success"):
+             score = int(accuracy_result.get("accuracy_score", 0))
+             pitch_result = {"success": True, "metrics": accuracy_result} # Pack for AI context
+        else:
+             score = 0
+             pitch_result = analyze_pitch(file_path) # Fallback to get some stats
+    else:
+        # Standard Pitch Analysis
+        pitch_result = analyze_pitch(file_path)
+        score = 70  # Start Score for standard exercises
+        
+        # Pitch Scoring Logic for standard exercises
+        if pitch_result.get("success"):
+            metrics = pitch_result["metrics"]
+            if metrics.get("pitch_stability_std", 10.0) < 2.0:
+                score += 10
+    
+    # Health Scoring Modifier
     if health_result.get("success"):
         overall_health = health_result["assessment"]["overall"]
         if overall_health == "green":
-            score += 20
+            if not exercise.pattern: score += 20 # Bonus only for non-accuracy exercises
         elif overall_health == "red":
-            score -= 20
-            
-    # Pitch Scoring
-    if pitch_result.get("success"):
-        metrics = pitch_result["metrics"]
-        if metrics.get("pitch_stability_std", 10.0) < 2.0:
-            score += 10
+            score -= 20 # Penalty always applies
             
     # Clamp Score
     score = max(0, min(100, score))

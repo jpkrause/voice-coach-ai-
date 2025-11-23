@@ -73,8 +73,23 @@ const ExerciseModal = ({ exercise, onClose }) => {
                     </div>
                 )}
 
+                {/* Audio Guide Player */}
+                {exercise.instructions_audio_url && !result && (
+                    <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                         <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                            {exercise.pattern ? "1. Listen to the pattern:" : "Instructions:"}
+                         </p>
+                         <audio controls src={exercise.instructions_audio_url} style={{ width: '100%' }} />
+                    </div>
+                )}
+
                 {!result ? (
                     <>
+                        {exercise.pattern && (
+                             <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem', textAlign: 'center' }}>
+                                2. Record your attempt:
+                             </p>
+                        )}
                         <div style={{ marginBottom: '1rem' }}>
                             <AudioRecorder onRecordingComplete={handleUpload} />
                         </div>

@@ -28,6 +28,7 @@ class ExerciseBase(BaseModel):
     physiological_target: Optional[str] = None
     metaphors: Dict[str, Any] = {}
     instructions_audio_url: Optional[str] = None
+    pattern: Optional[Dict[str, Any]] = None
 
 class Exercise(ExerciseBase):
     id: int

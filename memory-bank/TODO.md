@@ -39,3 +39,11 @@ Phase 4: Content & UI Polish
 [x] Progress Bars für XP und Level.
 [x] Badge-Case (Trophäenschrank) im Profil.
 [ ] Dark Mode finalisieren.
+Phase 5: Version 0.7 - Multi-Layer & Scales
+[x] Audio Synthesis
+[x] Backend Synth Engine (Sine/Sawtooth) für Tonleitern.
+[x] Endpoint für On-Demand Generierung von Audio.
+[x] Multi-Layer Exercises
+[x] DB Schema Update (Exercise Patterns).
+[x] Pitch Accuracy Logic (Vergleich gesungene Melodie vs. Target).
+[x] Frontend "Listen -> Sing" Workflow.

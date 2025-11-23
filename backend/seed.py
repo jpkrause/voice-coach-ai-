@@ -30,7 +30,8 @@ def seed_exercises(db: Session):
             is_scored=True, # Default
             physiological_target=ex_data["target"],
             # Metaphors and instructions_audio_url can be added later or extracted if available
-            metaphors={"execution": ex_data["execution"], "metrics": ex_data["expected_metrics"]} 
+            metaphors={"execution": ex_data["execution"], "metrics": ex_data["expected_metrics"]},
+            pattern=ex_data.get("pattern")
         )
         db.add(exercise)
     
