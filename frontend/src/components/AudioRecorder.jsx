@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ml5 from 'ml5';
 
-const AudioRecorder = ({ onRecordingComplete }) => {
+const AudioRecorder = ({ onRecordingComplete, targetPattern }) => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -11,10 +12,16 @@ const AudioRecorder = ({ onRecordingComplete }) => {
   const analyserRef = useRef(null);
   const requestRef = useRef(null);
   const sourceRef = useRef(null);
+  
+  // Pitch Detection refs
+  const pitchDetectorRef = useRef(null);
+  const currentPitchRef = useRef(null);
+  const isRecordingRef = useRef(false); // Ref for loop access
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      isRecordingRef.current = true;
       
       // --- Visualization Setup ---
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -27,6 +34,15 @@ const AudioRecorder = ({ onRecordingComplete }) => {
       sourceRef.current = source;
       source.connect(analyser);
       
+      // --- Pitch Detection Setup (ml5) ---
+      const modelUrl = 'https://cdn.jsdelivr.net/gh/ml5js/ml5-data-and-models/models/pitch-detection/crepe/';
+      
+      // Initialize ml5 pitch detection
+      pitchDetectorRef.current = ml5.pitchDetection(modelUrl, audioCtx, stream, () => {
+          console.log("Pitch Model Loaded");
+          detectPitch(); // Start recursive pitch detection
+      });
+
       draw(); // Start animation loop
       
       // --- Recording Setup ---
@@ -53,6 +69,7 @@ const AudioRecorder = ({ onRecordingComplete }) => {
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
             audioContextRef.current.close();
         }
+        isRecordingRef.current = false;
       };
 
       mediaRecorderRef.current.start();
@@ -61,6 +78,22 @@ const AudioRecorder = ({ onRecordingComplete }) => {
       console.error("Error accessing microphone:", error);
       alert("Could not access microphone. Please ensure permissions are granted.");
     }
+  };
+
+  const detectPitch = () => {
+      if (!pitchDetectorRef.current || !isRecordingRef.current) return;
+      
+      pitchDetectorRef.current.getPitch((err, frequency) => {
+          if (frequency) {
+              currentPitchRef.current = frequency;
+          } else {
+              currentPitchRef.current = null;
+          }
+          
+          if (isRecordingRef.current) {
+               detectPitch();
+          }
+      });
   };
 
   const draw = () => {
@@ -81,6 +114,63 @@ const AudioRecorder = ({ onRecordingComplete }) => {
     canvasCtx.fillStyle = '#1a1a1a'; 
     canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
     
+    // Draw Target Pattern (Piano Roll)
+    if (targetPattern && targetPattern.intervals) {
+        const rootHz = 261.63; // C4 Default
+        const minLog = Math.log(65);
+        const maxLog = Math.log(1046);
+        
+        targetPattern.intervals.forEach(interval => {
+            const targetFreq = rootHz * Math.pow(2, interval / 12);
+            const freqLog = Math.log(targetFreq);
+            
+            let normalized = (freqLog - minLog) / (maxLog - minLog);
+            normalized = Math.max(0, Math.min(1, normalized));
+            
+            const y = canvas.height - (normalized * canvas.height);
+            
+            // Draw Bar
+            canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            canvasCtx.fillRect(0, y - 5, canvas.width, 10); // 10px height bar
+            
+            // Draw Center Line
+            canvasCtx.beginPath();
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            canvasCtx.lineWidth = 1;
+            canvasCtx.moveTo(0, y);
+            canvasCtx.lineTo(canvas.width, y);
+            canvasCtx.stroke();
+        });
+    }
+
+    // Draw Pitch Line (Overlay)
+    if (currentPitchRef.current) {
+        const freq = currentPitchRef.current;
+        // Map Frequency (Log Scale)
+        // Min: C2 (65Hz), Max: C6 (1046Hz)
+        const minLog = Math.log(65);
+        const maxLog = Math.log(1046);
+        const freqLog = Math.log(freq);
+        
+        let normalized = (freqLog - minLog) / (maxLog - minLog);
+        normalized = Math.max(0, Math.min(1, normalized)); // Clamp 0-1
+        
+        const y = canvas.height - (normalized * canvas.height);
+        
+        canvasCtx.beginPath();
+        canvasCtx.strokeStyle = '#ff0055'; // Neon Red/Pink for Pitch
+        canvasCtx.lineWidth = 3;
+        canvasCtx.moveTo(0, y);
+        canvasCtx.lineTo(canvas.width, y);
+        canvasCtx.stroke();
+        
+        // Draw Hz Text
+        canvasCtx.fillStyle = '#ff0055';
+        canvasCtx.font = '12px Arial';
+        canvasCtx.fillText(`${Math.round(freq)} Hz`, 10, y - 5);
+    }
+
+    // Draw Waveform
     canvasCtx.lineWidth = 2;
     canvasCtx.strokeStyle = '#00f2ff'; // Neon Cyan
     canvasCtx.beginPath();
@@ -109,6 +199,7 @@ const AudioRecorder = ({ onRecordingComplete }) => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      isRecordingRef.current = false;
     }
   };
 

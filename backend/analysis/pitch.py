@@ -25,8 +25,9 @@ def analyze_pitch(file_path: str):
             }
             
         # Basic Statistics
-        min_pitch = float(np.min(voiced_f0))
-        max_pitch = float(np.max(voiced_f0))
+        # Smart Pitch Filtering: Use percentiles to ignore outliers (e.g. coughs, squeaks)
+        min_pitch = float(np.percentile(voiced_f0, 10))
+        max_pitch = float(np.percentile(voiced_f0, 90))
         avg_pitch = float(np.mean(voiced_f0))
         pitch_std = float(np.std(voiced_f0))
         

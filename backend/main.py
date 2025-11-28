@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import shutil
 import os
+import tempfile
 from datetime import datetime
 
 from . import models, database, schemas, gamification
@@ -68,7 +69,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(database.get_db)
 # --- Analysis Endpoints ---
 
 @app.post("/analyze/breath")
-async def analyze_breath_endpoint(difficulty: int = 1, file: UploadFile = File(...)):
+def analyze_breath_endpoint(difficulty: int = 1, file: UploadFile = File(...)):
     # Save temp file
     temp_filename = f"temp_{file.filename}"
     with open(temp_filename, "wb") as buffer:
@@ -84,7 +85,7 @@ async def analyze_breath_endpoint(difficulty: int = 1, file: UploadFile = File(.
             os.remove(temp_filename)
 
 @app.post("/analyze/health")
-async def analyze_health_endpoint(
+def analyze_health_endpoint(
     level: int = 1,
     voice_type: str = "Unknown",
     file: UploadFile = File(...)
@@ -127,7 +128,7 @@ def get_user_uploads():
     return files
 
 @app.post("/analyze/performance")
-async def analyze_performance_endpoint(
+def analyze_performance_endpoint(
     file: UploadFile = File(None),
     use_demo: bool = Form(False),
     local_filename: str = Form(None),
@@ -143,19 +144,21 @@ async def analyze_performance_endpoint(
         demo_source = "backend/static/exercises/1_lip_trills.mp3"
         if not os.path.exists(demo_source):
              return {"success": False, "error": "Demo file not found on server."}
-        temp_filename = "temp_demo_perf.mp3"
-        shutil.copy(demo_source, temp_filename)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            shutil.copy(demo_source, tmp.name)
+            temp_filename = tmp.name
     elif local_filename:
         # Use a file from user_uploads
         source_path = os.path.join("backend/user_uploads", local_filename)
         if not os.path.exists(source_path):
             return {"success": False, "error": f"File '{local_filename}' not found in user_uploads."}
-        temp_filename = f"temp_local_{local_filename}"
-        shutil.copy(source_path, temp_filename)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+             shutil.copy(source_path, tmp.name)
+             temp_filename = tmp.name
     elif file:
-        temp_filename = f"temp_perf_{file.filename}"
-        with open(temp_filename, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            temp_filename = tmp.name
     else:
         return {"success": False, "error": "No file provided."}
         
@@ -194,14 +197,14 @@ async def analyze_performance_endpoint(
             os.remove(temp_filename)
 
 @app.post("/analyze/range")
-async def analyze_range_endpoint(file: UploadFile = File(...)):
+def analyze_range_endpoint(file: UploadFile = File(...)):
     """
     Endpoint for the Range Finder.
     Determines lowest and highest note sung and classifies voice type.
     """
-    temp_filename = f"temp_range_{file.filename}"
-    with open(temp_filename, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        temp_filename = tmp.name
         
     try:
         result = analyze_pitch(temp_filename)
@@ -216,7 +219,8 @@ async def analyze_range_endpoint(file: UploadFile = File(...)):
                 min_diff = float("inf")
                 
                 # Calculate user's logarithmic center frequency
-                user_log_center = (math.log(min_hz) + math.log(max_hz)) / 2
+                # Bottom-Heavy Logic: Weigh min_pitch twice as much as max_pitch
+                user_log_center = (2 * math.log(min_hz) + math.log(max_hz)) / 3
                 
                 fache = KNOWLEDGE_BASE["voice_classification"]["fache"]
                 
@@ -250,6 +254,22 @@ def read_user(user_id: int, db: Session = Depends(database.get_db)):
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
+
+@app.get("/stats/trends")
+def get_stats_trends(user_id: int, db: Session = Depends(database.get_db)):
+    """
+    Returns time-series data for the user's sessions.
+    """
+    sessions = db.query(models.Session).filter(models.Session.user_id == user_id).order_by(models.Session.created_at.asc()).all()
+    
+    data = []
+    for s in sessions:
+        data.append({
+            "date": s.created_at.isoformat(),
+            "score": s.score,
+            "exercise_id": s.exercise_id
+        })
+    return data
 
 # --- Exercises ---
 
@@ -331,7 +351,7 @@ def create_session(
     if not user or not exercise:
         raise HTTPException(status_code=404, detail="User or Exercise not found")
 
-    # 2. Save Uploaded File
+    # 2. Save Uploaded File (Persistent storage for session history)
     upload_dir = "backend/user_uploads"
     os.makedirs(upload_dir, exist_ok=True)
     
@@ -339,10 +359,13 @@ def create_session(
     filename = f"{timestamp}_{file.filename}"
     file_path = os.path.join(upload_dir, filename)
     
+    # We keep this file permanently, so open/write is correct here, no tempfile needed unless we want atomic write.
+    # But standard open is fine for this MVP.
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     # 3. Run Analysis
+    # Note: We analyze the PERMANENT file here, not a temp file, because we want to keep it.
     health_result = analyze_health(file_path)
     
     # Pitch Analysis (Standard or Pattern-based)
@@ -389,10 +412,18 @@ def create_session(
     
     metrics_for_ai["score"] = score
     
+    # History Injection for AI
+    history = db.query(models.Session).filter(models.Session.user_id == user_id).order_by(models.Session.id.desc()).limit(5).all()
+    avg_score = 0
+    if history:
+        avg_score = sum([s.score for s in history]) / len(history)
+
     user_context = {
         "level": user.level,
         "voice_type": user.voice_type or "Unknown",
-        "streak": user.current_streak
+        "streak": user.current_streak,
+        "history_avg_score": round(avg_score, 1),
+        "history_count": len(history)
     }
     
     ai_feedback = generate_feedback(exercise.name, metrics_for_ai, user_context)

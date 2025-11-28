@@ -10,7 +10,8 @@ const ExerciseModal = ({ exercise, onClose }) => {
         setResult(null);
 
         const formData = new FormData();
-        formData.append("user_id", 1); // Hardcoded user for MVP
+        const userId = localStorage.getItem('user_id') || 1;
+        formData.append("user_id", userId);
         formData.append("exercise_id", exercise.id);
         formData.append("file", audioBlob, "exercise_recording.wav");
 
@@ -96,7 +97,10 @@ const ExerciseModal = ({ exercise, onClose }) => {
                              </p>
                         )}
                         <div style={{ marginBottom: '1rem' }}>
-                            <AudioRecorder onRecordingComplete={handleUpload} />
+                            <AudioRecorder 
+                                onRecordingComplete={handleUpload} 
+                                targetPattern={exercise.pattern}
+                            />
                         </div>
                         {isUploading && <p style={{ textAlign: 'center', color: '#888' }}>Analyzing your performance...</p>}
                     </>

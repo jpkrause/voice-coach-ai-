@@ -89,12 +89,29 @@ def generate_feedback(exercise_name: str, metrics: dict, user_context: dict):
             
         context_str = "\n".join(scientific_context)
         
+        # Build History Context
+        history_str = ""
+        if "history_avg_score" in user_context:
+            trend = "stabil"
+            if metrics.get("score", 0) > user_context['history_avg_score']:
+                trend = "verbessert 📈"
+            elif metrics.get("score", 0) < user_context['history_avg_score']:
+                trend = "leicht verschlechtert"
+                
+            history_str = f"""
+            Verlauf (Letzte {user_context['history_count']} Sessions):
+            - Durchschnitt Score: {user_context['history_avg_score']}
+            - Trend heute: {trend}
+            """
+        
         prompt = f"""
         Du bist ein professioneller, aber motivierender Vocal Coach (VocalCoach AI).
         Dein Schüler (Level {user_context.get('level', 1)}, {user_context.get('voice_type', 'Unbekannt')}) hat gerade die Übung '{exercise_name}' gemacht.
         
         Messdaten der Aufnahme:
         {json.dumps(metrics, indent=2)}
+        
+        {history_str}
         
         Wissenschaftlicher Hintergrund (zur internen Analyse):
         {context_str}

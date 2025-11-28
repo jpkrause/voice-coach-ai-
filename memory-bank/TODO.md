@@ -54,3 +54,24 @@ Phase 6: Personalization & Adaptive Audio
     [x] Frontend passing user_id to audio endpoint.
 [x] Drone/Accompaniment
     [x] Synth engine update for background drone.
+
+Phase 7: Alpha -> Beta (Robustness & Real-time)
+Focus: Stabilität der Analyse, visuelles Live-Feedback und Gedächtnis für den AI Coach.
+
+[ ] Priority 1: Core Algorithm Refinement
+    [x] Smart Pitch Filtering (backend/analysis/pitch.py): Replace min/max with percentiles (10/90) to ignore outliers.
+    [x] Voice Type Calibration (backend/main.py): Implement "Bottom-Heavy" logic for range detection.
+
+[ ] Priority 2: Live Frontend Experience
+    [x] Real-time Pitch Detection (AudioRecorder.jsx): Integrate ml5.js for client-side pitch tracking.
+    [x] Interactive Piano Roll (ExerciseModal.jsx): Visual Target-Bars + User Pitch Line overlay (Guitar Hero style).
+
+[ ] Priority 3: AI Memory & Trends
+    [x] History Injection: Pass last 5 sessions to AI prompt for trend comparison.
+    [x] Trend Analysis Endpoint: GET /stats/trends for dashboard charts.
+
+[ ] Priority 4: Technical Improvements & Refactoring
+    [x] Fix Blocking Async: Convert CPU-bound async endpoints to sync def (or use threadpool) to prevent event loop blocking.
+    [x] Safe Temp Files: Use tempfile.NamedTemporaryFile instead of manual open/remove.
+    [x] Dynamic User ID: Remove hardcoded "user_id=1" in frontend, use context/auth.
+    [x] Dockerization: Create Dockerfile and docker-compose.yml.
