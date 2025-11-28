@@ -32,11 +32,12 @@ def generate_tone(frequency, duration, sample_rate=44100, amplitude=0.5):
         
     return tone * envelope
 
-def generate_scale_audio(root_note, pattern, duration_per_note=0.8, sample_rate=44100, output_path=None):
+def generate_scale_audio(root_note, pattern, duration_per_note=0.8, sample_rate=44100, output_path=None, with_drone=True):
     """
     Generates an audio file for a scale.
     root_note: e.g. "C4"
     pattern: list of semitone intervals, e.g. [0, 2, 4, 5, 7, 9, 11, 12] (Major Scale)
+    with_drone: If True, adds a continuous root note in the background.
     """
     root_hz = librosa.note_to_hz(root_note)
     full_audio = np.array([])
@@ -51,9 +52,28 @@ def generate_scale_audio(root_note, pattern, duration_per_note=0.8, sample_rate=
         # Add a tiny bit of silence between notes
         silence = np.zeros(int(sample_rate * 0.05))
         full_audio = np.concatenate([full_audio, silence])
+    
+    if with_drone:
+        # Generate a drone tone (root note) for the entire duration
+        total_duration = len(full_audio) / sample_rate
+        # Use a slightly lower amplitude for the drone so it doesn't overpower the scale
+        drone = generate_tone(root_hz, total_duration, sample_rate, amplitude=0.3)
         
+        # Ensure lengths match exactly
+        if len(drone) > len(full_audio):
+            drone = drone[:len(full_audio)]
+        elif len(drone) < len(full_audio):
+            drone = np.pad(drone, (0, len(full_audio) - len(drone)), 'constant')
+            
+        full_audio = full_audio + drone
+
     # Normalize to 16-bit PCM range
-    audio_int16 = np.int16(full_audio / np.max(np.abs(full_audio)) * 32767)
+    # Avoid division by zero
+    max_val = np.max(np.abs(full_audio))
+    if max_val > 0:
+        audio_int16 = np.int16(full_audio / max_val * 32767)
+    else:
+        audio_int16 = np.zeros(len(full_audio), dtype=np.int16)
     
     if output_path:
         write(output_path, sample_rate, audio_int16)

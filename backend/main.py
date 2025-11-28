@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
@@ -269,7 +270,7 @@ def read_exercises(skip: int = 0, limit: int = 100, db: Session = Depends(databa
     return exercises
 
 @app.get("/exercises/{exercise_id}/audio")
-def get_exercise_audio(exercise_id: int, db: Session = Depends(database.get_db)):
+def get_exercise_audio(exercise_id: int, user_id: int = None, db: Session = Depends(database.get_db)):
     exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
     if not exercise:
         raise HTTPException(status_code=404, detail="Exercise not found")
@@ -277,23 +278,42 @@ def get_exercise_audio(exercise_id: int, db: Session = Depends(database.get_db))
     if not exercise.pattern:
         # Fallback to static file if no pattern
         filename = f"{exercise.id}_{exercise.name.replace(' ', '_').lower()}.mp3"
-        return {"url": f"http://localhost:8000/static/exercises/{filename}"}
+        # Return FileResponse directly
+        file_path = f"backend/static/exercises/{filename}"
+        if os.path.exists(file_path):
+            return FileResponse(file_path)
+        else:
+             raise HTTPException(status_code=404, detail="Audio file not found")
 
+    # Determine Root Note based on User Voice Type
+    root_note = "C4" # Default fallback
+    voice_type_suffix = "default"
+    
+    if user_id:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.voice_type:
+             voice_type_suffix = user.voice_type
+             # Lookup default root for this voice type
+             fache = KNOWLEDGE_BASE["voice_classification"]["fache"]
+             if user.voice_type in fache:
+                 root_note = fache[user.voice_type].get("default_root", "C4")
+    
     # Generate Audio if pattern exists
-    output_filename = f"generated_{exercise.id}_{exercise.name.replace(' ', '_').lower()}.wav"
+    output_filename = f"generated_{exercise.id}_{exercise.name.replace(' ', '_').lower()}_{voice_type_suffix}.wav"
     output_path = os.path.join("backend/static/exercises", output_filename)
     
     # Check if exists (cache)
     if not os.path.exists(output_path):
         pattern_data = exercise.pattern
         generate_scale_audio(
-            root_note=pattern_data.get("root", "C4"),
+            root_note=root_note,
             pattern=pattern_data.get("intervals", []),
             duration_per_note=pattern_data.get("duration", 0.8),
-            output_path=output_path
+            output_path=output_path,
+            with_drone=True
         )
         
-    return File(output_path, media_type="audio/wav")
+    return FileResponse(output_path, media_type="audio/wav")
 
 # --- Sessions & Gamification ---
 

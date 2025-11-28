@@ -79,7 +79,12 @@ const ExerciseModal = ({ exercise, onClose }) => {
                          <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                             {exercise.pattern ? "1. Listen to the pattern:" : "Instructions:"}
                          </p>
-                         <audio controls src={exercise.instructions_audio_url} style={{ width: '100%' }} />
+                         {/* Append user_id to URL to allow backend to personalize the audio (e.g. root note) */}
+                         <audio 
+                            controls 
+                            src={`${exercise.instructions_audio_url}${exercise.instructions_audio_url.includes('?') ? '&' : '?'}user_id=1`} 
+                            style={{ width: '100%' }} 
+                         />
                     </div>
                 )}
 

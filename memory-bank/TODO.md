@@ -47,3 +47,10 @@ Phase 5: Version 0.7 - Multi-Layer & Scales
 [x] DB Schema Update (Exercise Patterns).
 [x] Pitch Accuracy Logic (Vergleich gesungene Melodie vs. Target).
 [x] Frontend "Listen -> Sing" Workflow.
+Phase 6: Personalization & Adaptive Audio
+[x] Dynamic Root Notes
+    [x] Voice Type mapping in knowledge.py.
+    [x] Backend support for custom root note generation.
+    [x] Frontend passing user_id to audio endpoint.
+[x] Drone/Accompaniment
+    [x] Synth engine update for background drone.

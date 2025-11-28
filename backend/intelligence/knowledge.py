@@ -80,27 +80,33 @@ KNOWLEDGE_BASE = {
         "fache": {
             "Sopran": {
                 "range_hz": [261, 1047], # C4-C6
-                "passaggios": {"P1": "E4/F4 (330-350Hz)", "P2": "F#5/G5 (740-784Hz)"}
+                "passaggios": {"P1": "E4/F4 (330-350Hz)", "P2": "F#5/G5 (740-784Hz)"},
+                "default_root": "C4"
             },
             "Mezzo-Sopran": {
                 "range_hz": [220, 880], # A3-A5
-                "passaggios": {"P1": "E4/F4 (330-350Hz)", "P2": "E5/F5 (659-698Hz)"}
+                "passaggios": {"P1": "E4/F4 (330-350Hz)", "P2": "E5/F5 (659-698Hz)"},
+                "default_root": "A3"
             },
             "Alt": {
                 "range_hz": [174, 698], # F3-F5
-                "passaggios": {"P1": "G4 (392Hz)", "P2": "D5 (587Hz)"}
+                "passaggios": {"P1": "G4 (392Hz)", "P2": "D5 (587Hz)"},
+                "default_root": "G3"
             },
             "Tenor": {
                 "range_hz": [130, 523], # C3-C5
-                "passaggios": {"P1": "D4 (293Hz)", "P2": "G4 (392Hz)"}
+                "passaggios": {"P1": "D4 (293Hz)", "P2": "G4 (392Hz)"},
+                "default_root": "C3"
             },
             "Bariton": {
                 "range_hz": [98, 392], # G2-G4
-                "passaggios": {"P1": "B3 (246Hz)", "P2": "E4 (329Hz)"}
+                "passaggios": {"P1": "B3 (246Hz)", "P2": "E4 (329Hz)"},
+                "default_root": "A2"
             },
             "Bass": {
                 "range_hz": [82, 329], # E2-E4
-                "passaggios": {"P1": "A3 (220Hz)", "P2": "D4 (293Hz)"}
+                "passaggios": {"P1": "A3 (220Hz)", "P2": "D4 (293Hz)"},
+                "default_root": "F2"
             }
         }
     },
