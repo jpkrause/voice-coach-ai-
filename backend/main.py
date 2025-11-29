@@ -255,6 +255,24 @@ def read_user(user_id: int, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
+@app.put("/users/{user_id}", response_model=schemas.User)
+def update_user(user_id: int, user_update: schemas.UserUpdate, db: Session = Depends(database.get_db)):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update fields if provided
+    if user_update.nickname is not None:
+        db_user.nickname = user_update.nickname
+    if user_update.voice_type is not None:
+        db_user.voice_type = user_update.voice_type
+    if user_update.settings_genre is not None:
+        db_user.settings_genre = user_update.settings_genre
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
 @app.get("/stats/trends")
 def get_stats_trends(user_id: int, db: Session = Depends(database.get_db)):
     """

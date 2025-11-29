@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import RangeFinder from '../components/RangeFinder';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [showRangeFinder, setShowRangeFinder] = useState(false);
   const [trends, setTrends] = useState([]);
 
@@ -14,13 +15,21 @@ const Dashboard = () => {
     
     // Fetch User
     fetch(`http://localhost:8000/users/${userId}`)
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 404) throw new Error("User not found");
+        return res.json();
+      })
       .then(data => {
         setUser(data);
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        if (err.message === "User not found") {
+             // If user doesn't exist, redirect to login
+             localStorage.removeItem('user_id');
+             navigate('/login');
+        }
         setLoading(false);
       });
 

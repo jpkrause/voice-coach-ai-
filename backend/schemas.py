@@ -10,6 +10,11 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     pass
 
+class UserUpdate(BaseModel):
+    nickname: Optional[str] = None
+    voice_type: Optional[str] = None
+    settings_genre: Optional[str] = None
+
 class User(UserBase):
     id: int
     xp: int

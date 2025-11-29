@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Exercises from './pages/Exercises';
 import Review from './pages/Review';
+import Profile from './pages/Profile';
 import Login from './pages/Login';
 import './App.css';
 
@@ -40,7 +41,7 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/exercises" element={<Exercises />} />
                 <Route path="/review" element={<Review />} />
-                <Route path="/profile" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
               </Routes>
             </Layout>
           ) : (

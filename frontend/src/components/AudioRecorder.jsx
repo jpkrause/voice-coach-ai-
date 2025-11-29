@@ -89,7 +89,19 @@ const AudioRecorder = ({ onRecordingComplete, targetPattern, audioSrc, sequenceD
       setIsRecording(true);
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      alert("Could not access microphone. Please ensure permissions are granted.");
+      let errorMessage = "Could not access microphone. ";
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage += "Permission was denied. Please allow microphone access in your browser settings.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += "No microphone found. Please connect a microphone.";
+      } else if (error.name === 'NotReadableError') {
+        errorMessage += "Microphone is busy or not readable. Check if another app is using it.";
+      } else {
+        errorMessage += `Error: ${error.message || error.name}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
