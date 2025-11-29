@@ -4,6 +4,26 @@ import AudioRecorder from './AudioRecorder';
 const ExerciseModal = ({ exercise, onClose }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [result, setResult] = useState(null);
+    const [sequenceData, setSequenceData] = useState([]);
+
+    // Fetch Pattern Sequence on Mount
+    React.useEffect(() => {
+        const fetchPattern = async () => {
+            if (exercise.pattern) {
+                try {
+                    const userId = localStorage.getItem('user_id') || 1;
+                    const response = await fetch(`http://localhost:8000/exercises/${exercise.id}/pattern?user_id=${userId}`);
+                    const data = await response.json();
+                    if (data.sequence) {
+                        setSequenceData(data.sequence);
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch pattern sequence:", err);
+                }
+            }
+        };
+        fetchPattern();
+    }, [exercise.id, exercise.pattern]);
 
     const handleUpload = async (audioBlob) => {
         setIsUploading(true);
@@ -74,13 +94,10 @@ const ExerciseModal = ({ exercise, onClose }) => {
                     </div>
                 )}
 
-                {/* Audio Guide Player */}
-                {exercise.instructions_audio_url && !result && (
+                {/* Audio Guide (Preview) - Only show for non-pattern exercises or if user wants to listen first */}
+                {!exercise.pattern && exercise.instructions_audio_url && !result && (
                     <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-                         <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                            {exercise.pattern ? "1. Listen to the pattern:" : "Instructions:"}
-                         </p>
-                         {/* Append user_id to URL to allow backend to personalize the audio (e.g. root note) */}
+                         <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Instructions:</p>
                          <audio 
                             controls 
                             src={`${exercise.instructions_audio_url}${exercise.instructions_audio_url.includes('?') ? '&' : '?'}user_id=1`} 
@@ -93,13 +110,15 @@ const ExerciseModal = ({ exercise, onClose }) => {
                     <>
                         {exercise.pattern && (
                              <p style={{ color: '#aaa', marginBottom: '0.5rem', fontSize: '0.9rem', textAlign: 'center' }}>
-                                2. Record your attempt:
+                                Press Start to Record & Practice
                              </p>
                         )}
                         <div style={{ marginBottom: '1rem' }}>
                             <AudioRecorder 
                                 onRecordingComplete={handleUpload} 
                                 targetPattern={exercise.pattern}
+                                sequenceData={sequenceData}
+                                audioSrc={exercise.pattern ? `${exercise.instructions_audio_url}${exercise.instructions_audio_url.includes('?') ? '&' : '?'}user_id=1` : null}
                             />
                         </div>
                         {isUploading && <p style={{ textAlign: 'center', color: '#888' }}>Analyzing your performance...</p>}

@@ -47,13 +47,13 @@ Verschiebe die parselmouth Analyse in einen Background Worker (Celery/Redis), fa
 
 VocalCoach AI - Technical Roadmap v3 (The Interactive Era)
 
-Status: Core Analysis Stable ✅ | Focus: Interactive UX & Advanced Algorithms 🚧
+Status: Core Analysis Stable ✅ | Interactive UX & Rhythm Engine ✅
 
 🎯 Epic 1: The "Piano Roll" Experience (Frontend Heavy)
 
 Ziel: Der User soll nicht nur eine Wellenform sehen, sondern seine Stimme als Linie auf Noten-Balken.
 
-1.1 Canvas Piano Roll (Visualisierung)
+1.1 Canvas Piano Roll (Visualisierung) ✅
 
 Datei: src/components/AudioRecorder.jsx (oder neue PianoRoll.jsx)
 
@@ -69,17 +69,17 @@ Layer 2 (User): Eine leuchtende Linie (z.B. Cyan) zeigt den ml5 Pitch in Echtzei
 
 Tech: HTML5 Canvas requestAnimationFrame.
 
-1.2 Feedback-Loop (Visuell)
+1.2 Feedback-Loop (Visuell) ✅
 
 Färbe die User-Linie Grün, wenn sie den grauen Balken trifft, und Rot, wenn sie daneben liegt.
 
 Das gibt sofortiges Dopamin beim Üben.
 
-🧠 Epic 2: Algorithmic Accuracy (Backend Heavy)
+🧠 Epic 2: Algorithmic Accuracy (Backend Heavy) ✅
 
 Ziel: Die "Trefferquote" bei Melodien (Scales) wissenschaftlich berechnen.
 
-2.1 Dynamic Time Warping (DTW)
+2.1 Dynamic Time Warping (DTW) ✅
 
 Problem: analyze_pitch_accuracy zählt aktuell nur "Hits". Wenn der User zu langsam/schnell singt, versagt der Vergleich.
 
@@ -95,7 +95,7 @@ DTW "dehnt/staucht" die Zeitachsen, um die bestmögliche Übereinstimmung zu fin
 
 Der "Distance Score" ist dein Maß für Intonation & Phrasierung (unabhängig vom Tempo).
 
-2.2 Rhythm Analysis
+2.2 Rhythm Analysis ✅
 
 Nutze librosa.onset.onset_detect, um zu prüfen: War der User rhythmisch "tight" auf dem Beat des Playbacks?
 

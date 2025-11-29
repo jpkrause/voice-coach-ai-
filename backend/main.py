@@ -294,6 +294,43 @@ def read_exercises(skip: int = 0, limit: int = 100, db: Session = Depends(databa
             
     return exercises
 
+@app.get("/exercises/{exercise_id}/pattern")
+def get_exercise_pattern(exercise_id: int, user_id: int = None, db: Session = Depends(database.get_db)):
+    """
+    Returns the note sequence (metadata) for a generated exercise.
+    This tells the frontend WHEN and WHICH notes to display on the Piano Roll.
+    """
+    exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+
+    if not exercise.pattern:
+        return {"sequence": []} # Static files have no known pattern yet
+
+    # Determine Root Note based on User Voice Type
+    root_note = "C4" # Default fallback
+    
+    if user_id:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.voice_type:
+             # Lookup default root for this voice type
+             fache = KNOWLEDGE_BASE["voice_classification"]["fache"]
+             if user.voice_type in fache:
+                 root_note = fache[user.voice_type].get("default_root", "C4")
+    
+    # Generate Metadata (Fast, no audio generation)
+    pattern_data = exercise.pattern
+    result = generate_scale_audio(
+        root_note=root_note,
+        pattern=pattern_data.get("intervals", []),
+        duration_per_note=pattern_data.get("duration", 0.8),
+        output_path=None,
+        with_drone=False,
+        generate_audio=False
+    )
+    
+    return result
+
 @app.get("/exercises/{exercise_id}/audio")
 def get_exercise_audio(exercise_id: int, user_id: int = None, db: Session = Depends(database.get_db)):
     exercise = db.query(models.Exercise).filter(models.Exercise.id == exercise_id).first()

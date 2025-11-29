@@ -62,80 +62,124 @@ def analyze_pitch(file_path: str):
 
 def analyze_pitch_accuracy(file_path: str, target_pattern: dict):
     """
-    Compares the user's recording against a target musical pattern (Scale/Arpeggio).
-    target_pattern: {"intervals": [...], "root": "C4"}
+    Compares the user's recording against a target musical pattern using DTW.
+    Analyzes both Pitch Accuracy and Rhythmic Timing.
+    target_pattern: {"intervals": [...], "root": "C4", "duration": 0.8}
     """
     try:
-        # 1. Calculate Target Frequencies
-        root_hz = librosa.note_to_hz(target_pattern["root"])
-        target_freqs = [root_hz * (2 ** (i / 12.0)) for i in target_pattern["intervals"]]
-        target_notes = [librosa.hz_to_note(f) for f in target_freqs]
-        
-        # 2. Extract User Pitch
+        # 1. Setup & Load Audio
         y, sr = librosa.load(file_path, sr=None)
-        f0, voiced_flag, _ = librosa.pyin(y, fmin=50, fmax=2000, sr=sr)
-        voiced_f0 = f0[voiced_flag]
+        hop_length = 512
         
-        if len(voiced_f0) == 0:
+        # 2. Extract User Pitch (f0)
+        f0, voiced_flag, _ = librosa.pyin(y, fmin=50, fmax=2000, sr=sr, hop_length=hop_length)
+        
+        if np.all(~voiced_flag):
             return {"success": False, "error": "No voice detected"}
 
-        # 3. Simplify User Pitch to Note Sequence (Quantization)
-        # Convert f0 to MIDI notes
-        midi_notes = librosa.hz_to_midi(voiced_f0)
-        rounded_notes = np.round(midi_notes)
+        # Convert to MIDI (use NaN or 0 for unvoiced)
+        # We replace NaNs with 0 for DTW, but keep in mind 0 is "silence" or "wrong"
+        user_midi = librosa.hz_to_midi(f0)
+        user_midi[np.isnan(user_midi)] = 0 # Treat unvoiced as 0
         
-        # Remove repeated notes (simple run-length encoding equivalent)
-        # We only care about the sequence of distinct notes sung
-        detected_sequence = []
-        prev_note = None
-        min_duration_frames = 10 # Ignore blips
-        current_run = 0
+        # 3. Construct Target Pitch Curve (Time-Series)
+        root_hz = librosa.note_to_hz(target_pattern.get("root", "C4"))
+        intervals = target_pattern.get("intervals", [])
+        note_duration = target_pattern.get("duration", 0.8) # Seconds per note
+        silence_duration = 0.05
         
-        for note in rounded_notes:
-            if note == prev_note:
-                current_run += 1
-            else:
-                if prev_note is not None and current_run > min_duration_frames:
-                     detected_sequence.append(librosa.midi_to_note(prev_note))
-                prev_note = note
-                current_run = 1
-        # Add last note
-        if prev_note is not None and current_run > min_duration_frames:
-             detected_sequence.append(librosa.midi_to_note(prev_note))
-             
-        # 4. Score Logic (Dynamic Time Warping)
-        # Compare the sequence of sung notes (User) with the target notes (Target)
-        # regardless of speed (tempo invariant).
+        frames_per_note = int((note_duration * sr) / hop_length)
+        frames_per_silence = int((silence_duration * sr) / hop_length)
         
-        target_midi = np.array([librosa.note_to_midi(n) for n in target_notes])
-        user_midi = np.array([librosa.note_to_midi(n) for n in detected_sequence])
+        target_midi_seq = []
         
-        if len(user_midi) == 0:
-             return {"success": False, "error": "No distinct notes detected"}
+        for semitone in intervals:
+            # Calculate MIDI value
+            target_freq = root_hz * (2 ** (semitone / 12.0))
+            target_val = librosa.hz_to_midi(target_freq)
+            
+            # Append note frames
+            target_midi_seq.extend([target_val] * frames_per_note)
+            # Append silence frames
+            target_midi_seq.extend([0] * frames_per_silence)
+            
+        target_midi = np.array(target_midi_seq)
 
-        # Calculate DTW distance (Euclidean distance on MIDI numbers)
-        # Reshape required for fastdtw (N, 1)
+        # 4. Perform DTW
+        # We need to reshape for fastdtw: (N, 1)
+        # This aligns the user's full performance with the target time-series
         distance, path = fastdtw(user_midi.reshape(-1, 1), target_midi.reshape(-1, 1), dist=euclidean)
         
-        # Normalize Score
-        # Distance = Sum of semitone errors.
-        # Avg Error per Note = distance / len(target_notes)
-        avg_error = distance / len(target_midi)
+        # 5. Calculate Pitch Score (Intonation)
+        # Filter the path to only include frames where BOTH user and target are voiced ( > 0)
+        # This ignores silence matching silence (which is easy)
+        voiced_errors = []
+        for u_idx, t_idx in path:
+            u_val = user_midi[u_idx]
+            t_val = target_midi[t_idx]
+            if u_val > 0 and t_val > 0:
+                voiced_errors.append(abs(u_val - t_val))
+                
+        avg_pitch_error = np.mean(voiced_errors) if voiced_errors else 10.0
+        pitch_score = max(0, 100 - (avg_pitch_error * 10))
         
-        # Scoring Heuristic:
-        # 0.0 error (Perfect) -> 100
-        # 1.0 error (Avg 1 semitone off) -> 90
-        # >10.0 error -> 0
-        score = max(0, 100 - (avg_error * 10))
+        # 6. Calculate Rhythm Score (Timing)
+        # In a perfect rhythmic performance, the path should be close to diagonal
+        # (assuming we aligned the start, or DTW handles it)
+        # We calculate the deviation of the path from the diagonal line connecting start/end of match
+        
+        path_arr = np.array(path)
+        # Normalize path coordinates to 0..1 to compare slope
+        # This is a simplified rhythm check
+        # A better check: How much warping happened?
+        # Manhatten distance of path from diagonal is a proxy.
+        
+        # Simple Rhythm Proxy: Ratio of User Duration to Target Duration
+        # If user sang 10s for a 5s scale, Rhythm is bad.
+        # But DTW handles speed variation.
+        
+        # Let's use "Warp Cost": Sum of absolute difference between indices?
+        # Or just use the fact that if we matched well, the user midi sequence length 
+        # should be somewhat close to target length (ignoring leading/trailing silence).
+        
+        # Advanced: Path Deviation Score
+        # Calculate regression line of path. R-squared would be 'steadiness' of tempo.
+        # Slope would be 'speed' (relative to target).
+        # We'll use a simplified metric: Length Ratio
+        
+        # Trim user silence from start/end for length comparison
+        voiced_indices = np.where(user_midi > 0)[0]
+        if len(voiced_indices) > 0:
+            user_duration_frames = voiced_indices[-1] - voiced_indices[0]
+            target_duration_frames = len(target_midi)
+            ratio = user_duration_frames / target_duration_frames
+            # Ideal ratio is 1.0. 
+            # 0.8 (too fast) or 1.2 (too slow) penalizes score.
+            rhythm_deviation = abs(1.0 - ratio)
+            rhythm_score = max(0, 100 - (rhythm_deviation * 200)) # 10% deviation = -20 points
+        else:
+            rhythm_score = 0
+            
+        # Combined Score
+        total_score = (pitch_score * 0.7) + (rhythm_score * 0.3)
+        
+        # Feedback Generation
+        feedback_parts = []
+        if pitch_score > 80: feedback_parts.append("Great Intonation!")
+        elif pitch_score > 50: feedback_parts.append("Watch your pitch.")
+        else: feedback_parts.append("Pitch needs work.")
+        
+        if rhythm_score > 80: feedback_parts.append("Solid Rhythm.")
+        elif rhythm_score > 50: feedback_parts.append("Timing was okay.")
+        else: feedback_parts.append(f"Timing off ({'Too Fast' if ratio < 1 else 'Too Slow'}).")
         
         return {
             "success": True,
-            "accuracy_score": round(score, 1),
-            "dtw_distance": round(distance, 2),
-            "avg_error_semitones": round(avg_error, 2),
-            "target_notes": target_notes,
-            "detected_sequence": detected_sequence,
-            "feedback": f"DTW Score: {round(score,1)} (Avg Error: {round(avg_error, 2)} semitones)"
+            "accuracy_score": round(total_score, 1),
+            "pitch_score": round(pitch_score, 1),
+            "rhythm_score": round(rhythm_score, 1),
+            "avg_error_semitones": round(avg_pitch_error, 2),
+            "feedback": " ".join(feedback_parts)
         }
 
     except Exception as e:

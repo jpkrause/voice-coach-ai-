@@ -61,3 +61,109 @@ Sanftes Rutschen von der Mittellage in die Tiefe. Signalisiert dem Körper: "Arb
 5. Design Philosophie
 Studio Dark Mode: Fokus und Ruhe.
 Feedback-Loops: Visuelles Feedback muss sofort verständlich sein (Farben statt nur Zahlen).
+
+
+
+VocalCoach AI - Roadmap v3: The "Rhythm & Flow" UpdateStatus: Analysis Core Stable ✅ | Focus: Temporal Visualization & Synchronization🎯 VisionWir verwandeln den statischen "Tuner-Modus" in einen dynamischen "Timeline-Modus". Der User soll nicht nur die richtige Note treffen, sondern auch zum richtigen Zeitpunkt.1. Backend: Die "Beat Map" EngineDamit das Frontend weiß, wann welche Note kommt, muss das Backend mehr als nur Audio liefern.[ ] Update audio/synth.py:Die Funktion generate_scale_audio muss modifiziert werden.Return Value: Statt nur Audio zurückzugeben (oder zu speichern), muss sie auch Metadaten liefern.Neue Struktur:{
+  "audio_path": "static/exercises/scale_c4.wav",
+  "sequence": [
+     {"note": "C4", "freq": 261.63, "start_time": 0.0, "duration": 0.8},
+     {"note": "D4", "freq": 293.66, "start_time": 0.8, "duration": 0.8},
+     # ...
+  ]
+}
+VocalCoach AI - Roadmap v3: The "Rhythm & Flow" UpdateStatus: Analysis Core Stable ✅ | Focus: Temporal Visualization & Synchronization🎯 VisionWir verwandeln den statischen "Tuner-Modus" in einen dynamischen "Timeline-Modus". Der User soll nicht nur die richtige Note treffen, sondern auch zum richtigen Zeitpunkt.1. Backend: Die "Beat Map" EngineDamit das Frontend weiß, wann welche Note kommt, muss das Backend mehr als nur Audio liefern.[ ] Update audio/synth.py:Die Funktion generate_scale_audio muss modifiziert werden.Return Value: Statt nur Audio zurückzugeben (oder zu speichern), muss sie auch Metadaten liefern.Neue Struktur:{
+  "audio_path": "static/exercises/scale_c4.wav",
+  "sequence": [
+     {"note": "C4", "freq": 261.63, "start_time": 0.0, "duration": 0.8},
+     {"note": "D4", "freq": 293.66, "start_time": 0.8, "duration": 0.8},
+     # ...
+  ]
+}
+VocalCoach AI - Roadmap v3: The "Rhythm & Flow" Update
+
+Status: Analysis Core Stable ✅ | Focus: Temporal Visualization & Synchronization
+
+🎯 Vision
+
+Wir verwandeln den statischen "Tuner-Modus" in einen dynamischen "Timeline-Modus". Der User soll nicht nur die richtige Note treffen, sondern auch zum richtigen Zeitpunkt.
+
+1. Backend: Die "Beat Map" Engine
+
+Damit das Frontend weiß, wann welche Note kommt, muss das Backend mehr als nur Audio liefern.
+
+[ ] Update audio/synth.py:
+
+Die Funktion generate_scale_audio muss modifiziert werden.
+
+Return Value: Statt nur Audio zurückzugeben (oder zu speichern), muss sie auch Metadaten liefern.
+
+Neue Struktur:
+
+{
+  "audio_path": "static/exercises/scale_c4.wav",
+  "sequence": [
+     {"note": "C4", "freq": 261.63, "start_time": 0.0, "duration": 0.8},
+     {"note": "D4", "freq": 293.66, "start_time": 0.8, "duration": 0.8},
+     # ...
+  ]
+}
+
+
+[ ] API Update (main.py):
+
+Der Endpoint /exercises/{id}/audio sollte idealerweise diese JSON-Metadaten mitliefern (oder ein neuer Endpoint /exercises/{id}/pattern).
+
+2. Frontend: Scrolling Piano Roll (Canvas)
+
+Das Herzstück der neuen UI.
+
+[ ] Refactor AudioRecorder.jsx:
+
+Animation Loop: Statt statischer Balken müssen sich die x-Koordinaten der Balken basierend auf der currentTime des Audio-Players ändern.
+
+Logik: x = (note.startTime - audio.currentTime) * speed + offset.
+
+Visuell:
+
+Zukunft (rechts): Graue Balken kommen herein.
+
+Gegenwart (Mitte/Cursor): "Hit Zone". Hier muss der User singen.
+
+Vergangenheit (links): Balken verschwinden.
+
+[ ] Audio Player Sync:
+
+Das <audio> Element muss die "Master Clock" für das Canvas sein.
+
+3. Gamification: Timing Score
+
+Intonation ist gut, Timing ist besser.
+
+[ ] Rhythmus-Bewertung (Backend pitch.py):
+
+Wenn wir DTW nutzen, bekommen wir auch Informationen über den zeitlichen Versatz.
+
+Berechne einen rhythm_score: Wie stark weicht der "Warp Path" von der Diagonalen ab? (Wenn User zu schnell/langsam war).
+
+[ ] UI Feedback:
+
+Zeige nach der Übung: "Du warst etwas schleppend (zu spät)" oder "Du warst treibend (zu früh)".
+
+4. Advanced: Custom User Ranges
+
+Keine statischen C4-Skalen mehr.
+
+[ ] Adaptive Generation:
+
+Wenn der User ein Bass ist (E2 - C4), macht es keinen Sinn, ihm eine C4-Skala zu geben (zu hoch!).
+
+Backend: Prüfe user.voice_type und generiere die Übung dynamisch in einer passenden Tonart (z.B. Start auf F2 für Bass).
+
+Dies erfordert, dass generate_scale_audio den root_note Parameter dynamisch basierend auf dem User-Profil setzt.
+
+🔌 Technical Debt Cleanup
+
+[ ] Cleanup user_uploads: Implementiere einen Cronjob oder Check, der alte WAV-Dateien (älter als 7 Tage) löscht, um Speicher zu sparen.
+
+[ ] Environment Variables: Sicherstellen, dass GEMINI_API_KEY auch im Docker-Container korrekt durchgereicht wird.

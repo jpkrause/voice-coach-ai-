@@ -32,54 +32,87 @@ def generate_tone(frequency, duration, sample_rate=44100, amplitude=0.5):
         
     return tone * envelope
 
-def generate_scale_audio(root_note, pattern, duration_per_note=0.8, sample_rate=44100, output_path=None, with_drone=True):
+def generate_scale_audio(root_note, pattern, duration_per_note=0.8, sample_rate=44100, output_path=None, with_drone=True, generate_audio=True):
     """
-    Generates an audio file for a scale.
+    Generates an audio file for a scale and returns metadata.
     root_note: e.g. "C4"
     pattern: list of semitone intervals, e.g. [0, 2, 4, 5, 7, 9, 11, 12] (Major Scale)
     with_drone: If True, adds a continuous root note in the background.
+    generate_audio: If False, only returns metadata (faster).
+    
+    Returns:
+    {
+        "audio_path": str (if output_path provided),
+        "audio_data": np.array (if no output_path),
+        "sequence": list of dicts [{"note": str, "freq": float, "start_time": float, "duration": float}]
+    }
     """
     root_hz = librosa.note_to_hz(root_note)
     full_audio = np.array([])
+    sequence_metadata = []
     
-    # Calculate frequencies
+    current_time = 0.0
+    silence_duration = 0.05
+    
+    # Calculate frequencies and build sequence
     for semitone in pattern:
         # f = f0 * 2^(n/12)
         freq = root_hz * (2 ** (semitone / 12.0))
-        tone = generate_tone(freq, duration_per_note, sample_rate)
-        full_audio = np.concatenate([full_audio, tone])
+        note_name = librosa.hz_to_note(freq)
         
-        # Add a tiny bit of silence between notes
-        silence = np.zeros(int(sample_rate * 0.05))
-        full_audio = np.concatenate([full_audio, silence])
-    
-    if with_drone:
-        # Generate a drone tone (root note) for the entire duration
-        total_duration = len(full_audio) / sample_rate
-        # Use a slightly lower amplitude for the drone so it doesn't overpower the scale
-        drone = generate_tone(root_hz, total_duration, sample_rate, amplitude=0.3)
+        # Add metadata
+        sequence_metadata.append({
+            "note": note_name,
+            "freq": float(round(freq, 2)),
+            "start_time": float(round(current_time, 3)),
+            "duration": float(duration_per_note)
+        })
         
-        # Ensure lengths match exactly
-        if len(drone) > len(full_audio):
-            drone = drone[:len(full_audio)]
-        elif len(drone) < len(full_audio):
-            drone = np.pad(drone, (0, len(full_audio) - len(drone)), 'constant')
+        if generate_audio:
+            # Generate Audio
+            tone = generate_tone(freq, duration_per_note, sample_rate)
+            full_audio = np.concatenate([full_audio, tone])
             
-        full_audio = full_audio + drone
+            # Add silence
+            silence = np.zeros(int(sample_rate * silence_duration))
+            full_audio = np.concatenate([full_audio, silence])
+        
+        current_time += duration_per_note + silence_duration
+    
+    result = {
+        "sequence": sequence_metadata,
+        "total_duration": current_time
+    }
+    
+    if generate_audio:
+        if with_drone:
+            # Generate a drone tone (root note) for the entire duration
+            total_duration = len(full_audio) / sample_rate
+            # Use a slightly lower amplitude for the drone so it doesn't overpower the scale
+            drone = generate_tone(root_hz, total_duration, sample_rate, amplitude=0.3)
+            
+            # Ensure lengths match exactly
+            if len(drone) > len(full_audio):
+                drone = drone[:len(full_audio)]
+            elif len(drone) < len(full_audio):
+                drone = np.pad(drone, (0, len(full_audio) - len(drone)), 'constant')
+                
+            full_audio = full_audio + drone
 
-    # Normalize to 16-bit PCM range
-    # Avoid division by zero
-    max_val = np.max(np.abs(full_audio))
-    if max_val > 0:
-        audio_int16 = np.int16(full_audio / max_val * 32767)
-    else:
-        audio_int16 = np.zeros(len(full_audio), dtype=np.int16)
+        # Normalize to 16-bit PCM range
+        max_val = np.max(np.abs(full_audio))
+        if max_val > 0:
+            audio_int16 = np.int16(full_audio / max_val * 32767)
+        else:
+            audio_int16 = np.zeros(len(full_audio), dtype=np.int16)
+            
+        if output_path:
+            write(output_path, sample_rate, audio_int16)
+            result["audio_path"] = output_path
+        else:
+            result["audio_data"] = audio_int16
     
-    if output_path:
-        write(output_path, sample_rate, audio_int16)
-        return output_path
-    
-    return audio_int16
+    return result
 
 if __name__ == "__main__":
     # Test

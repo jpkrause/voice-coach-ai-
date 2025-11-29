@@ -50,7 +50,7 @@ Focus: Stabilität der Analyse, visuelles Live-Feedback und Gedächtnis.
 
 ---
 
-## 🚀 Phase 8: Interactive & Scientific Polish (Next Steps)
+## 🚀 Phase 8: Interactive & Scientific Polish (✅ Done)
 Fokus: Präzision der Bewertung (DTW), User Experience (Live Feedback) und Langzeit-Gesundheit.
 
 ### 8.1 Algorithmic Accuracy (Backend)
@@ -69,6 +69,7 @@ Das "Guitar Hero" Gefühl verstärken.
         - **Grün:** Wenn `abs(user_hz - target_hz) < threshold` (z.B. 50 Cents).
         - **Rot/Grau:** Wenn daneben.
     - Task: Visueller Effekt (z.B. "Glow" oder Partikel) bei Note Onset.
+    - **Update v3:** Scrolling Timeline & Sync implemented.
 
 ### 8.3 Vocal Health Monitor (Dashboard)
 Langzeit-Trends sichtbar machen und proaktiv warnen.
