@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import RangeFinder from '../components/RangeFinder';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRangeFinder, setShowRangeFinder] = useState(false);
+  const [trends, setTrends] = useState([]);
 
   useEffect(() => {
     const userId = localStorage.getItem('user_id') || 1; // Fallback to 1 for dev
+    
+    // Fetch User
     fetch(`http://localhost:8000/users/${userId}`)
       .then(res => res.json())
       .then(data => {
@@ -19,6 +23,19 @@ const Dashboard = () => {
         console.error(err);
         setLoading(false);
       });
+
+    // Fetch Trends
+    fetch(`http://localhost:8000/stats/trends?user_id=${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            // Format date for chart (DD/MM)
+            const formatted = data.map(d => ({
+                ...d,
+                displayDate: new Date(d.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
+            }));
+            setTrends(formatted);
+        })
+        .catch(err => console.error("Trend fetch error:", err));
   }, []);
 
   if (loading) return <div>Loading Profile...</div>;
@@ -35,6 +52,21 @@ const Dashboard = () => {
     ((user.xp - currentLevelMinXP) / (nextLevelXP - currentLevelMinXP)) * 100
   ));
 
+  // Proactive AI Warning Logic
+  const checkVocalFatigue = () => {
+      if (trends.length < 3) return null;
+      const last3 = trends.slice(-3);
+      // Check if jitter is increasing (Trend)
+      if (last3[0].jitter < last3[1].jitter && last3[1].jitter < last3[2].jitter) {
+          // Check if latest is actually high (above 1.0%)
+          if (last3[2].jitter > 1.0) {
+               return "⚠️ Warning: Your vocal jitter is trending up. Consider taking a rest day.";
+          }
+      }
+      return null;
+  };
+  const fatigueWarning = checkVocalFatigue();
+
   return (
     <div>
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
@@ -42,6 +74,22 @@ const Dashboard = () => {
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem' }}>
           Keep your voice healthy and your spirit high.
         </p>
+      </div>
+
+      {/* Quick Actions (Phase 9.1) */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
+           <Link to="/exercises">
+             <button className="btn-primary" style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', fontSize: '1rem' }}>
+               🚀 Daily Warmup
+             </button>
+           </Link>
+           <button 
+             className="btn-secondary" 
+             style={{ padding: '0.8rem 1.5rem', borderRadius: '20px', fontSize: '1rem', background: '#333' }}
+             onClick={() => setShowRangeFinder(true)}
+           >
+             🔍 Quick Range Check
+           </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
@@ -112,6 +160,66 @@ const Dashboard = () => {
               <RangeFinder />
           </div>
       )}
+
+      {/* Vocal Health Monitor (Trends) */}
+      <div style={{ marginTop: '4rem' }}>
+        <h2 style={{ fontSize: '2rem', marginBottom: '1.5rem', textAlign: 'center', color: '#eee' }}>Vocal Health Monitor</h2>
+        
+        {fatigueWarning && (
+            <div style={{ 
+                background: 'rgba(255, 193, 7, 0.1)', 
+                border: '1px solid #ffc107', 
+                color: '#ffc107', 
+                padding: '1rem', 
+                borderRadius: '8px', 
+                textAlign: 'center',
+                marginBottom: '1rem'
+            }}>
+                {fatigueWarning}
+            </div>
+        )}
+
+        <div className="card" style={{ height: '400px', padding: '2rem' }}>
+            <h4 style={{ textAlign: 'center', marginBottom: '1rem', color: '#888' }}>Performance Score History</h4>
+            {trends.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trends} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                        <XAxis dataKey="displayDate" stroke="#888" tick={{fontSize: 12}} />
+                        <YAxis stroke="#888" domain={[0, 100]} />
+                        <Tooltip 
+                            contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333', borderRadius: '8px' }}
+                            itemStyle={{ color: '#fff' }}
+                        />
+                        <Line 
+                            type="monotone" 
+                            dataKey="score" 
+                            name="Score"
+                            stroke="#00f2ff" 
+                            strokeWidth={3} 
+                            dot={{r: 4, fill: '#00f2ff'}} 
+                            activeDot={{r: 6, fill: '#fff'}} 
+                        />
+                        {/* Jitter Line (Secondary) */}
+                         <Line 
+                            type="monotone" 
+                            dataKey="jitter" 
+                            name="Jitter %"
+                            stroke="#ffc107" 
+                            strokeWidth={2} 
+                            strokeDasharray="5 5"
+                            dot={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            ) : (
+                <div style={{ textAlign: 'center', color: '#666', marginTop: '120px' }}>
+                    <p style={{ fontSize: '1.2rem' }}>No data available yet.</p>
+                    <p>Complete your first exercise to see your progress!</p>
+                </div>
+            )}
+        </div>
+      </div>
     </div>
   );
 };

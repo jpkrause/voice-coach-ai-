@@ -157,16 +157,41 @@ const AudioRecorder = ({ onRecordingComplete, targetPattern }) => {
         
         const y = canvas.height - (normalized * canvas.height);
         
+        // Determine Color (Green if hitting a note)
+        let pitchColor = '#ff0055'; // Default: Neon Red/Pink (Miss)
+        
+        if (targetPattern && targetPattern.intervals) {
+            const rootHz = 261.63; // C4 Default - TODO: Make dynamic based on Voice Type
+            const userCents = 1200 * Math.log2(freq / rootHz);
+            
+            // Check if close to any target note
+            // targetPattern.intervals are in semitones (0, 2, 4...)
+            // 1 semitone = 100 cents
+            const thresholdCents = 50; // +/- 50 cents (quarter tone) tolerance
+            
+            const isHit = targetPattern.intervals.some(interval => {
+                const targetCents = interval * 100;
+                return Math.abs(userCents - targetCents) < thresholdCents;
+            });
+            
+            if (isHit) {
+                pitchColor = '#00ff00'; // Neon Green (Hit!)
+            }
+        }
+
         canvasCtx.beginPath();
-        canvasCtx.strokeStyle = '#ff0055'; // Neon Red/Pink for Pitch
+        canvasCtx.strokeStyle = pitchColor;
         canvasCtx.lineWidth = 3;
+        canvasCtx.shadowBlur = 10;
+        canvasCtx.shadowColor = pitchColor;
         canvasCtx.moveTo(0, y);
         canvasCtx.lineTo(canvas.width, y);
         canvasCtx.stroke();
+        canvasCtx.shadowBlur = 0; // Reset shadow
         
         // Draw Hz Text
-        canvasCtx.fillStyle = '#ff0055';
-        canvasCtx.font = '12px Arial';
+        canvasCtx.fillStyle = pitchColor;
+        canvasCtx.font = 'bold 14px Arial';
         canvasCtx.fillText(`${Math.round(freq)} Hz`, 10, y - 5);
     }
 

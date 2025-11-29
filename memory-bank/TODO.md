@@ -1,77 +1,115 @@
 Projekt Roadmap & TODOs
-Phase 0: Setup & "Hello World"
+
+## Phase 0: Setup & "Hello World" (✅ Done)
 [x] Environment & DB
 [x] Git & Ordnerstruktur.
 [x] FastAPI & SQLite Setup.
 [x] React Setup.
-Phase 1: Foundation & Gamification
+
+## Phase 1: Foundation & Gamification (✅ Done)
 Ziel: User Account, Datenbank und erste Motivations-Mechaniken.
-[x] DB Models erweitern
-[x] User Model mit streak, xp, level Feldern.
-[x] Exercise Model anlegen.
-[x] Seed-Script schreiben: Die 10 Basis-Übungen und 10 Spezifischen Übungen in die DB füllen.
-[x] Gamification Logic
-[x] Funktion calculate_xp(score, difficulty).
-[x] Funktion update_streak(user_id).
-[x] Endpoint GET /profile (liefert Level & Streak).
-Phase 2: Audio Engine & "Breath-Alyzer"
-[x] Basis Analyse
-[x] Librosa & Parselmouth Setup.
-[x] Breath Analyzer (breath.py)
-[x] Algorithmus für RMS-Amplitude (Lautstärke über Zeit).
-[x] Erkennung von Einbrüchen (schlechte Stütze).
-[x] Testen mit einer Aufnahme von "Sssss".
-[ ] Refinement & UX
-[x] Noise Calibration (Grundrauschen entfernen).
-[x] Global Difficulty Levels (Anpassung der Toleranz-Schwellen).
-[x] Visualisierung
-[x] Live-Lautstärke-Visualizer im Frontend (Wellenform/Canvas).
-Phase 3: Vocal Assessment & AI
-[x] Vocal Health (Jitter/Shimmer)
-[x] Ampel-System Logik implementieren.
-[x] Hybrid AI
-[x] Gemini Anbindung mit Metriken (inkl. Atem-Daten).
-[x] Prompt Engineering für Feedback (Context Injection aus knowledge.py).
-Phase 4: Content & UI Polish
-[x] Content Production
-[x] Audio-Dateien für die Übungen generieren (gTTS Script & API Integration).
-[ ] UI Design
-[x] Progress Bars für XP und Level.
-[x] Badge-Case (Trophäenschrank) im Profil.
-[ ] Dark Mode finalisieren.
-Phase 5: Version 0.7 - Multi-Layer & Scales
-[x] Audio Synthesis
-[x] Backend Synth Engine (Sine/Sawtooth) für Tonleitern.
-[x] Endpoint für On-Demand Generierung von Audio.
-[x] Multi-Layer Exercises
-[x] DB Schema Update (Exercise Patterns).
-[x] Pitch Accuracy Logic (Vergleich gesungene Melodie vs. Target).
+[x] DB Models erweitern (User, Streak, XP).
+[x] Exercise Model anlegen & Seeding (Basis & Spezifische Übungen).
+[x] Gamification Logic (XP Formel, Streak Update).
+[x] Endpoint GET /profile.
+
+## Phase 2: Audio Engine & "Breath-Alyzer" (✅ Done)
+[x] Basis Analyse (Librosa & Parselmouth Setup).
+[x] Breath Analyzer (RMS-Amplitude, Stabilitätstest).
+[x] Noise Calibration & Difficulty Levels.
+[x] Visualisierung (Live-Lautstärke-Visualizer).
+
+## Phase 3: Vocal Assessment & AI (✅ Done)
+[x] Vocal Health Metrics (Jitter/Shimmer Ampel-System).
+[x] Hybrid AI Integration (Gemini Anbindung).
+[x] Prompt Engineering (Context Injection aus knowledge.py).
+
+## Phase 4: Content & UI Polish (✅ Done)
+[x] Content Production (Audio-Dateien generiert/TTS).
+[x] UI Design (Progress Bars, Badges).
+[ ] Dark Mode finalisieren (fehlt evtl. noch Feinschliff).
+
+## Phase 5: Version 0.7 - Multi-Layer & Scales (✅ Done)
+[x] Audio Synthesis (Sine/Sawtooth Engine).
+[x] Multi-Layer Exercises (Exercise Patterns).
+[x] Pitch Accuracy Logic (Basis "Hit-Rate" Algorithmus).
 [x] Frontend "Listen -> Sing" Workflow.
-Phase 6: Personalization & Adaptive Audio
-[x] Dynamic Root Notes
-    [x] Voice Type mapping in knowledge.py.
-    [x] Backend support for custom root note generation.
-    [x] Frontend passing user_id to audio endpoint.
-[x] Drone/Accompaniment
-    [x] Synth engine update for background drone.
 
-Phase 7: Alpha -> Beta (Robustness & Real-time)
-Focus: Stabilität der Analyse, visuelles Live-Feedback und Gedächtnis für den AI Coach.
+## Phase 6: Personalization & Adaptive Audio (✅ Done)
+[x] Dynamic Root Notes (Voice Type mapping).
+[x] Drone/Accompaniment Synth Engine.
 
-[ ] Priority 1: Core Algorithm Refinement
-    [x] Smart Pitch Filtering (backend/analysis/pitch.py): Replace min/max with percentiles (10/90) to ignore outliers.
-    [x] Voice Type Calibration (backend/main.py): Implement "Bottom-Heavy" logic for range detection.
+## Phase 7: Alpha -> Beta Refinement (✅ Done)
+Focus: Stabilität der Analyse, visuelles Live-Feedback und Gedächtnis.
+[x] **Smart Pitch Filtering:** (backend/analysis/pitch.py) Percentile-Filter (10/90) implementiert.
+[x] **Voice Type Calibration:** (backend/main.py) "Bottom-Heavy" Logik implementiert.
+[x] **Real-time Pitch Detection:** (Frontend) ml5.js Integration steht.
+[x] **Interactive Piano Roll:** (Frontend) Canvas zeichnet Target-Bars & User-Pitch.
+[x] **AI Memory:** (Backend) History Injection (letzte 5 Sessions) in AI Prompt integriert.
+[x] **Technical Improvements:** Async Blocking Fixes, Safe Temp Files, Dockerization.
 
-[ ] Priority 2: Live Frontend Experience
-    [x] Real-time Pitch Detection (AudioRecorder.jsx): Integrate ml5.js for client-side pitch tracking.
-    [x] Interactive Piano Roll (ExerciseModal.jsx): Visual Target-Bars + User Pitch Line overlay (Guitar Hero style).
+---
 
-[ ] Priority 3: AI Memory & Trends
-    [x] History Injection: Pass last 5 sessions to AI prompt for trend comparison.
-    [x] Trend Analysis Endpoint: GET /stats/trends for dashboard charts.
+## 🚀 Phase 8: Interactive & Scientific Polish (Next Steps)
+Fokus: Präzision der Bewertung (DTW), User Experience (Live Feedback) und Langzeit-Gesundheit.
 
-[ ] Priority 4: Technical Improvements & Refactoring
-    [x] Fix Blocking Async: Convert CPU-bound async endpoints to sync def (or use threadpool) to prevent event loop blocking.
-    [x] Safe Temp Files: Use tempfile.NamedTemporaryFile instead of manual open/remove.
-    [x] Dynamic User ID: Remove hardcoded "user_id=1" in frontend, use context/auth.
-    [x] Dockerization: Create Dockerfile and docker-compose.yml.
+### 8.1 Algorithmic Accuracy (Backend)
+Verschiebung von einfacher "Hit-Rate" zu wissenschaftlichem Sequenz-Vergleich.
+[x] **Dynamic Time Warping (DTW) Implementierung**
+    - Datei: `backend/analysis/pitch.py`
+    - Task: Import von `fastdtw` (oder `scipy.spatial.distance`).
+    - Logic: Ersetze die einfache Array-Suche in `analyze_pitch_accuracy` durch DTW-Distanz-Berechnung.
+    - Ziel: Bewertung von Phrasierung und Timing (nicht nur "Note getroffen"). Erkennt, wenn User richtig singt, aber leicht versetzt zum Beat.
+
+### 8.2 Visual Feedback Loop (Frontend)
+Das "Guitar Hero" Gefühl verstärken.
+[x] **Gamified Piano Roll**
+    - Datei: `frontend/src/components/AudioRecorder.jsx`
+    - Task: Färbe die Pitch-Linie in Echtzeit.
+        - **Grün:** Wenn `abs(user_hz - target_hz) < threshold` (z.B. 50 Cents).
+        - **Rot/Grau:** Wenn daneben.
+    - Task: Visueller Effekt (z.B. "Glow" oder Partikel) bei Note Onset.
+
+### 8.3 Vocal Health Monitor (Dashboard)
+Langzeit-Trends sichtbar machen und proaktiv warnen.
+[x] **Trend Charts**
+    - Datei: `frontend/src/pages/Dashboard.jsx`
+    - Task: Nutze `recharts` um `GET /stats/trends` Daten zu visualisieren.
+    - Metriken: Jitter (Y-Achse) über Zeit (X-Achse). Ziel: Sinkende Kurve.
+[x] **Proactive AI Warnings**
+    - Logic: Wenn Jitter-Trend der letzten 3 Sessions steigt -> Zeige Warnung im Dashboard ("Stimme wirkt müde, mach Pause!").
+
+### 8.4 Advanced Audio Features
+[ ] **MIDI / MusicXML Support** (Optional für später)
+    - Import echter Songs statt nur Skalen.
+[ ] **Formant Biofeedback**
+    - Echtzeit-Anzeige der Vokal-Farbe (Hell/Dunkel) im Canvas.
+
+## 🎨 Phase 9: UI Overhaul (Transformation zum "Digital Studio")
+Anpassung des Interfaces an die neuen Real-time & Scientific Features.
+
+### 9.1 Dashboard 2.0 ("The Cockpit")
+[x] **Vocal Health Monitor UI**
+    - Integration einer "Ampel" oder Tachometer-Anzeige für den aktuellen Vocal-Status (via Jitter Chart).
+[x] **Trend Visualization**
+    - Einbau von `recharts` (LineChart) für Jitter- und Score-Verlauf.
+[x] **Quick Actions**
+    - Prominente Buttons für "Daily Warmup" und "Quick Check".
+
+### 9.2 Immersive Practice Mode
+[ ] **Fullscreen Recorder**
+    - Umbau des `ExerciseModal` zu einem Fullscreen-Overlay ("Studio Mode").
+    - Vergrößerung des Canvas für bessere Lesbarkeit der Pitch-Linie.
+[ ] **Live Feedback UX**
+    - Visuelle Indikatoren (Neon-Glow) bei Treffern direkt im Canvas (in Sync mit Phase 8.2).
+
+### 9.3 Post-Game Analysis
+[ ] **Detailed Result Screen**
+    - Anzeige der Pitch-Kurve *nach* der Aufnahme zur Analyse ("Wo war ich zu tief?").
+    - Aufschlüsselung des Scores (Intonation vs. Timing).
+
+### 9.4 Visual Polish
+[ ] **Modern Styling**
+    - Glassmorphism-Effekte für Cards und Modals.
+    - Konsistentes Neon-Farbschema (Cyberpunk/Studio Aesthetic).
+    - Mobile Responsiveness Optimierung.

@@ -1,6 +1,8 @@
 import librosa
 import numpy as np
 import os
+from fastdtw import fastdtw
+from scipy.spatial.distance import euclidean
 
 def analyze_pitch(file_path: str):
     """
@@ -101,43 +103,39 @@ def analyze_pitch_accuracy(file_path: str, target_pattern: dict):
         if prev_note is not None and current_run > min_duration_frames:
              detected_sequence.append(librosa.midi_to_note(prev_note))
              
-        # 4. Score Logic (Simple "Hit Rate")
-        # Check how many of the target notes appear in the user's sequence (in roughly correct order)
-        hits = 0
-        user_idx = 0
+        # 4. Score Logic (Dynamic Time Warping)
+        # Compare the sequence of sung notes (User) with the target notes (Target)
+        # regardless of speed (tempo invariant).
         
-        matched_notes = []
+        target_midi = np.array([librosa.note_to_midi(n) for n in target_notes])
+        user_midi = np.array([librosa.note_to_midi(n) for n in detected_sequence])
         
-        for target_note in target_notes:
-            # Look ahead in user sequence
-            found = False
-            # Allow searching a few steps ahead/behind or just strictly forward?
-            # Let's do strict forward search for now
-            while user_idx < len(detected_sequence):
-                user_note = detected_sequence[user_idx]
-                user_idx += 1
-                
-                # Check for exact match (ignoring octave errors? No, scale needs specific octave usually)
-                if user_note == target_note:
-                    hits += 1
-                    matched_notes.append(target_note)
-                    found = True
-                    break
-            
-            if not found:
-                # If not found, we don't advance hits, but we continue checking next target
-                # (Maybe user skipped a note)
-                pass
+        if len(user_midi) == 0:
+             return {"success": False, "error": "No distinct notes detected"}
 
-        accuracy = (hits / len(target_notes)) * 100
+        # Calculate DTW distance (Euclidean distance on MIDI numbers)
+        # Reshape required for fastdtw (N, 1)
+        distance, path = fastdtw(user_midi.reshape(-1, 1), target_midi.reshape(-1, 1), dist=euclidean)
+        
+        # Normalize Score
+        # Distance = Sum of semitone errors.
+        # Avg Error per Note = distance / len(target_notes)
+        avg_error = distance / len(target_midi)
+        
+        # Scoring Heuristic:
+        # 0.0 error (Perfect) -> 100
+        # 1.0 error (Avg 1 semitone off) -> 90
+        # >10.0 error -> 0
+        score = max(0, 100 - (avg_error * 10))
         
         return {
             "success": True,
-            "accuracy_score": round(accuracy, 1),
+            "accuracy_score": round(score, 1),
+            "dtw_distance": round(distance, 2),
+            "avg_error_semitones": round(avg_error, 2),
             "target_notes": target_notes,
             "detected_sequence": detected_sequence,
-            "matched_notes": matched_notes,
-            "feedback": f"You hit {hits} out of {len(target_notes)} notes."
+            "feedback": f"DTW Score: {round(score,1)} (Avg Error: {round(avg_error, 2)} semitones)"
         }
 
     except Exception as e:

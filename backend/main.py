@@ -264,10 +264,15 @@ def get_stats_trends(user_id: int, db: Session = Depends(database.get_db)):
     
     data = []
     for s in sessions:
+        jitter = 0.0
+        if s.metrics_json and isinstance(s.metrics_json, dict):
+            jitter = s.metrics_json.get("health", {}).get("jitter_percent", 0.0)
+            
         data.append({
             "date": s.created_at.isoformat(),
             "score": s.score,
-            "exercise_id": s.exercise_id
+            "exercise_id": s.exercise_id,
+            "jitter": jitter
         })
     return data
 
